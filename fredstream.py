@@ -8,11 +8,20 @@ from dataprep.eda import create_report
 from pandas_profiling import ProfileReport
 import webbrowser
 
-st.header("Fred API")
+api_key  = '<your api key here>'
+
+st.set_page_config(page_title='FRED EDA App', page_icon=None, layout='centered', initial_sidebar_state='auto')
+
+st.header("Fred Data and EDA App")
 
 task_dropdown = st.sidebar.selectbox(
 "What would like to do? ",
-('Quick Review of Fred Data' , 'Full EDA'))
+('Quick Review of Fred Data' , 'Full EDA', 'Save EDA Reports', 'Create a .csv file'))
+
+if st.sidebar.button('Visit fred.stlouisfed.org'):
+    url = 'https://fred.stlouisfed.org/'
+    webbrowser.open(url,new=2)
+
 
 def get_date_range():
     today = datetime.date.today()
@@ -24,7 +33,7 @@ def get_date_range():
     return start_date, end_date
 
 def get_fred_details():
-    fred = Fred(api_key='<your api key')
+    fred = Fred(api_key=api_key)
     x = pd.DataFrame()
 
     x = fred.search('SP500', limit=1)
@@ -60,7 +69,7 @@ def format_descriptions(df):
 def get_fred_data(start,end):
 
     data = {}
-    fred = Fred(api_key='<your api key')
+    fred = Fred(api_key=api_key)
     sp500 = fred.get_series('SP500', observation_start = start_date, observation_end = end_date)
     data['SP500'] = fred.get_series('SP500', observation_start = start_date, observation_end = end_date)
         
@@ -73,6 +82,7 @@ def get_fred_data(start,end):
     vix = fred.get_series('VIXCLS', observation_start = start_date, observation_end = end_date)
     data['VIX'] = fred.get_series('VIXCLS', observation_start = start_date, observation_end = end_date)
    
+
     umcs = fred.get_series('UMCSENT', observation_start = start_date, observation_end = end_date)
     data['ConsumerSentiment'] = fred.get_series('UMCSENT', observation_start = start_date, observation_end = end_date)
     
@@ -147,13 +157,41 @@ if task_dropdown == 'Full EDA':
 
     st.write('Two new tabs will open with your EDA results')
     create_report(datadf).show_browser()
-    report = create_report(datadf)
-    #report.to_html(f"Fred_Dataprep_Report_{start_date}_{end_date}.html")
-
-    
+       
     profile = ProfileReport(datadf, title="Fred Data Pandas Profiling Report", explorative=True)
     profile.to_file(f"Fred_Pandas_Profile_{start_date}_{end_date}.html")
     url = f"Fred_Pandas_Profile_{start_date}_{end_date}.html"
     webbrowser.open(url,new=2)
 
+if task_dropdown == 'Save EDA Reports':
+    st.subheader('Save a copy of your EDA Reports')
+
+    st.write('What is your date range?')
+    start_date, end_date = get_date_range()
+    sp500, unemployment, cpi, vix, umcs, datadf = get_fred_data(start_date,end_date)
+ 
+    if st.button('Submit'):
+        st.subheader('Creating your EDA reports...')
+        profile = ProfileReport(datadf, title="Fred Data Pandas Profiling Report", explorative=True)
+        filename = f"Fred_Pandas_Profile_{start_date}_{end_date}.html"
+        profile.to_file(filename)
+        st.success(f"Your Pandas Profile Report has been saved: {filename}")
+   
+        filename = f"Fred_Dataprep_Report_{start_date}_{end_date}"
+        report = create_report(datadf)
+        report.save(filename)
+        st.success(f"Your Fred dataprep Report has been saved: {filename}")
+
+
+if task_dropdown == 'Create a .csv file':
+    st.write('What is your date range?')
+    start_date, end_date = get_date_range()
+
+    sp500, unemployment, cpi, vix, umcs, datadf = get_fred_data(start_date,end_date)
+
+    if st.button('Submit'):
+        st.subheader('Creating an output dataset: .csv format')
+        filename = f"fred_data_{start_date}_{end_date}.csv"
+        datadf.to_csv(filename)
+        st.success(f"Your file has been created: {filename}")
     
